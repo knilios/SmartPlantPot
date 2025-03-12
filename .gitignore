@@ -1,0 +1,13 @@
+# Vim swap files
+*.swp
+*.swo
+*.swn
+*.sw?
+
+# Vim backup files
+*~
+
+# Vim temporary files
+*.bak
+*.tmp
+
