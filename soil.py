@@ -6,7 +6,7 @@ import machine
 import math
 import network
 import time
-from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor
+from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor, LocationSensor
 
 
 class WifiManager:
@@ -114,12 +114,6 @@ class ConnectionManager:
             await asyncio.sleep(self.CHECK_CONNECTION_FREQ)
 
 
-class Location:
-    @staticmethod
-    def get_data():
-        return {"lat": 13.45, "lon": 100.29}
-
-
 class Publisher:
     PUBLISH_INTERVAL = 600
     PUBLISH_TOPIC = "b6610545499/weather_db/in"
@@ -150,7 +144,7 @@ class Publisher:
         self.conn_mgr.mqtt.publish("b6610545499/weather_db/debug", "KidBright restarted")
 
 async def main():
-    p = Publisher(LightSensor(), TemperatureSensor(), Location)
+    p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor())
     p.run()
     while True:
         await asyncio.sleep(1)

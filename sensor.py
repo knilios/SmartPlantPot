@@ -38,4 +38,10 @@ class SoilMoistureSensor(Sensor):
     
     def get_data(self) -> dict:
         return {"moisture": abs(self.__sensor()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+    
+
+class LocationSensor():
+    @staticmethod
+    def get_data():
+        return {"lat": 13.45, "lon": 100.29}
         
