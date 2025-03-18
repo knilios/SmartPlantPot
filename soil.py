@@ -6,7 +6,7 @@ import machine
 import math
 import network
 import time
-from sensor import Sensor, LightSensor, TemperatureSensor
+from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor
 
 
 class WifiManager:

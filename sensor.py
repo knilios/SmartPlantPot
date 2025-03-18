@@ -1,9 +1,8 @@
 from abc import ABC
+from machine import ADC
+import machine
 
-class Sensor(ABC):
-    def __init__(self):
-        pass
-    
+class Sensor(ABC):    
     def get_data(self) -> dict:
         pass
     
@@ -29,3 +28,14 @@ class TemperatureSensor(Sensor):
         high, low = self.__sensor.readfrom(77, 2)
         celsius = (low + (high * 256)) / 128
         return {"temperature": celsius}
+    
+
+class SoilMoistureSensor(Sensor):
+    def __init__(self):
+        self.__PIN_NUMBER = 34
+        self.__sensor = ADC(self.__PIN_NUMBER)
+        self.__MAX_VALUE = 65535
+    
+    def get_data(self) -> dict:
+        return {"moisture": abs(self.__sensor()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+        
