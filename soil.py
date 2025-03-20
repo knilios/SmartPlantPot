@@ -4,7 +4,6 @@ import asyncio
 import json
 import machine
 import network
-import time
 
 
 class LightSensor:
@@ -32,8 +31,18 @@ class TemperatureSensor:
 
 class Location:
     @staticmethod
-    def get_data():
+    def get_data() -> dict:
         return {"lat": 13.45, "lon": 100.29}
+
+
+class SoilSensor:
+    MAX_VALUE = 65535
+
+    def __init__(self):
+        self.__sensor = machine.ADC(machine.PIN(35))
+
+    def get_data(self) -> dict:
+        return self.MAX_VALUE - self.__sensor.read_u16()
 
 
 class WifiManager:
@@ -45,10 +54,10 @@ class WifiManager:
         self.__led = machine.Pin(2, machine.Pin.OUT)
         self.__led.value(1)
 
-    def connect(self) -> None:
+    async def connect(self) -> None:
         self.__led.value(1)
         self.__wlan.active(False)
-        time.sleep(1)
+        await asyncio.sleep(1)
         self.__wlan.active(True)
         print("*** Connecting to WiFi...")
 
@@ -59,7 +68,7 @@ class WifiManager:
                     print("*** WiFi connected")
                     self.__led.value(0)
                     return
-                time.sleep(WifiManager.RECONNECT_INTERVAL)
+                await asyncio.sleep(self.RECONNECT_INTERVAL)
 
             print("*** Connection Failed, Retrying...")
         except OSError as e:
@@ -97,13 +106,9 @@ class MQTTManager:
         except OSError as e:
             print(f"Error publishing: {e}")
 
-    def set_callback(self, func):
+    def set_callback(self, func) -> None:
         self.__client.set_callback(func)
 
-    async def check_msg(self):
-        while True:
-            self.__client.check_msg()
-            await asyncio.sleep_ms(0)
 
     def isconnected(self) -> bool:
         try:
@@ -120,21 +125,24 @@ class ConnectionController:
         self.wifi = WifiManager()
         self.mqtt = MQTTManager()
 
-    def initialise_connection(self):
-        self.wifi.connect()
-        if self.wifi.isconnected():
-            self.mqtt.connect()
+    async def initialise_connection(self) -> None:
+        await self.connect()
         asyncio.create_task(self.check_connection())
-        asyncio.create_task(self.mqtt.check_msg())
+        # asyncio.create_task(self.mqtt.check_msg())
         self.mqtt.publish(self.mqtt.DEBUG_TOPIC, "KidBright restarted")
 
-    async def check_connection(self):
+    async def connect(self) -> None:
+        await self.wifi.connect()
+        if self.wifi.isconnected():
+            self.mqtt.connect()
+
+    async def check_connection(self) -> None:
         """Check WiFi and MQTT connection every 5 seconds"""
         print(f"*** Checking connection every {self.CHECK_CONNECTION_FREQ} seconds")
         while True:
             if not self.wifi.isconnected():
                 print("*** WiFi disconnected, reconnecting...")
-                self.wifi.connect()
+                await self.connect()
             if self.wifi.isconnected() and not self.mqtt.isconnected():
                 print("*** MQTT disconnected, reconnecting...")
                 self.mqtt.connect()
@@ -149,7 +157,7 @@ class Publisher:
         self.conn_mgr = conn_mgr
         self.sensors = list(sensors)
 
-    def run(self):
+    def run(self) -> None:
         asyncio.create_task(self.__publish_sensor_data_every_interval())
 
     def __get_all_sensor_data(self) -> dict:
@@ -158,18 +166,18 @@ class Publisher:
             temp.update(sensor.get_data())
         return temp
 
-    async def __publish_sensor_data_every_interval(self):
+    async def __publish_sensor_data_every_interval(self) -> None:
         while True:
             if self.conn_mgr.wifi.isconnected():
                 data = self.__get_all_sensor_data()
                 print(data)
-                self.conn_mgr.mqtt.publish(Publisher.PUBLISH_TOPIC, json.dumps(data))
-            await asyncio.sleep(Publisher.PUBLISH_INTERVAL)
+                self.conn_mgr.mqtt.publish(self.PUBLISH_TOPIC, json.dumps(data))
+            await asyncio.sleep(self.PUBLISH_INTERVAL)
 
 
 async def main():
     conn_mgr = ConnectionController()
-    conn_mgr.initialise_connection()
+    await conn_mgr.initialise_connection()
     p = Publisher(LightSensor(), TemperatureSensor(), Location, conn_mgr=conn_mgr)
     p.run()
     while True:
