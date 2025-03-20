@@ -1,8 +1,7 @@
-from abc import ABC
 from machine import ADC
 import machine
 
-class Sensor(ABC):    
+class Sensor():    
     def get_data(self) -> dict:
         pass
     
@@ -37,7 +36,7 @@ class SoilMoistureSensor(Sensor):
         self.__MAX_VALUE = 65535
     
     def get_data(self) -> dict:
-        return {"moisture": abs(self.__sensor()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+        return {"moisture": abs(self.__sensor.read_u16()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
     
 
 class LocationSensor():
@@ -45,3 +44,4 @@ class LocationSensor():
     def get_data():
         return {"lat": 13.45, "lon": 100.29}
         
+

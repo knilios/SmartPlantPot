@@ -1,4 +1,4 @@
-from config import WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS
+from config import WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS, MQTT_DEBUG_CHANNEL, MQTT_PUBLISH_CHANNEL
 from umqtt.robust import MQTTClient
 import asyncio
 import json
@@ -58,7 +58,7 @@ class MQTTManager:
         print("*** Connecting to MQTT broker...")
         try:
             self.__client.connect()
-            self.__client.publish("b6610545499/weather_db/debug", "MQTT Reconnected")
+            self.__client.publish(MQTT_DEBUG_CHANNEL, "MQTT Reconnected")
             print("*** MQTT broker connected")
             self.__led.value(0)
         except OSError as e:
@@ -116,7 +116,6 @@ class ConnectionManager:
 
 class Publisher:
     PUBLISH_INTERVAL = 600
-    PUBLISH_TOPIC = "b6610545499/weather_db/in"
     
     def __init__(self, *sensors):
         self.conn_mgr = ConnectionManager()
@@ -134,14 +133,14 @@ class Publisher:
             if self.conn_mgr.wifi.isconnected():
                 data = self.__get_all_sensor_data()
                 print(data)
-                self.conn_mgr.mqtt.publish(Publisher.PUBLISH_TOPIC, json.dumps(data))
+                self.conn_mgr.mqtt.publish(MQTT_PUBLISH_CHANNEL, json.dumps(data))
             await asyncio.sleep(Publisher.PUBLISH_INTERVAL)
 
     def run(self):
         asyncio.create_task(self.conn_mgr.check_connection())
         asyncio.create_task(self.__publish_sensor_data_every_interval())
         asyncio.create_task(self.conn_mgr.mqtt.check_msg())
-        self.conn_mgr.mqtt.publish("b6610545499/weather_db/debug", "KidBright restarted")
+        self.conn_mgr.mqtt.publish(MQTT_DEBUG_CHANNEL, "KidBright restarted")
 
 async def main():
     p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor())
