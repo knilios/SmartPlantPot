@@ -1,48 +1,12 @@
-from config import WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS
+from config import WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS, MQTT_DEBUG_CHANNEL, MQTT_PUBLISH_CHANNEL
 from umqtt.robust import MQTTClient
 import asyncio
 import json
 import machine
 import network
 
-
-class LightSensor:
-    def __init__(self):
-        self.__sensor = machine.ADC(machine.Pin(36))
-
-    def get_data(self) -> dict:
-        v = self.__sensor.read_uv() / 1e06
-        r_ldr = v * (33000 / (3.3 - v))
-        lux = 10000 / ((r_ldr / 100) ** (4 / 3))
-        return {"light": lux}
-
-
-class TemperatureSensor:
-    def __init__(self):
-        self.__sensor = machine.I2C(sda=machine.Pin(4), scl=machine.Pin(5))
-        self.__sensor.writeto(77, bytearray([0x04, 0b01100000]))
-        self.__sensor.writeto(77, bytearray([0]))
-
-    def get_data(self) -> dict:
-        high, low = self.__sensor.readfrom(77, 2)
-        celsius = (low + (high * 256)) / 128
-        return {"temperature": celsius}
-
-
-class Location:
-    @staticmethod
-    def get_data() -> dict:
-        return {"lat": 13.45, "lon": 100.29}
-
-
-class SoilSensor:
-    MAX_VALUE = 65535
-
-    def __init__(self):
-        self.__sensor = machine.ADC(machine.PIN(35))
-
-    def get_data(self) -> dict:
-        return self.MAX_VALUE - self.__sensor.read_u16()
+import time
+from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor, LocationSensor
 
 
 class WifiManager:
@@ -94,7 +58,7 @@ class MQTTManager:
         print("*** Connecting to MQTT broker...")
         try:
             self.__client.connect()
-            self.__client.publish(self.DEBUG_TOPIC, "MQTT Reconnected")
+            self.__client.publish(MQTT_DEBUG_CHANNEL, "MQTT Reconnected")
             print("*** MQTT broker connected")
             self.__led.value(0)
         except OSError as e:
@@ -151,8 +115,6 @@ class ConnectionController:
 
 class Publisher:
     PUBLISH_INTERVAL = 600
-    PUBLISH_TOPIC = "b6610545499/placeholder/in"
-
     def __init__(self, *sensors, conn_mgr: ConnectionController):
         self.conn_mgr = conn_mgr
         self.sensors = list(sensors)
@@ -171,14 +133,15 @@ class Publisher:
             if self.conn_mgr.wifi.isconnected():
                 data = self.__get_all_sensor_data()
                 print(data)
-                self.conn_mgr.mqtt.publish(self.PUBLISH_TOPIC, json.dumps(data))
+
+                self.conn_mgr.mqtt.publish(MQTT_PUBLISH_CHANNEL, json.dumps(data))
             await asyncio.sleep(self.PUBLISH_INTERVAL)
 
 
 async def main():
     conn_mgr = ConnectionController()
     await conn_mgr.initialise_connection()
-    p = Publisher(LightSensor(), TemperatureSensor(), Location, conn_mgr=conn_mgr)
+    p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor(), conn_mgr=conn_mgr)
     p.run()
     while True:
         await asyncio.sleep(1)
