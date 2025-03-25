@@ -1,0 +1,8 @@
+MQTT_DEBUG_CHANNEL = "example/debug"
+SENSOR_MQTT_TOPIC = "example/publish"
+WATER_MQTT_TOPIC = "example/IWateredMyPlant"
+MQTT_USER = "Yukinoshita Yukinon"
+MQTT_PASS = "1234"
+MQTT_SERVER = "iot.cpe.ku.ac.th"
+WIFI_SSID = "MyPersonalHotspot"
+WIFI_PASS = "4321"

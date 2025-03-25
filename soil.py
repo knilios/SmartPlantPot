@@ -1,12 +1,26 @@
-from config import WIFI_SSID, WIFI_PASS, MQTT_USER, MQTT_PASS, MQTT_DEBUG_CHANNEL, MQTT_PUBLISH_CHANNEL
-from umqtt.robust import MQTTClient
 import asyncio
 import json
 import machine
 import network
+from umqtt.robust import MQTTClient
 
-import time
-from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor, LocationSensor
+from config import (
+    MQTT_DEBUG_CHANNEL,
+    MQTT_PASS,
+    MQTT_USER,
+    SENSOR_MQTT_TOPIC,
+    WATER_MQTT_TOPIC,
+    WIFI_PASS,
+    WIFI_SSID,
+    MQTT_SERVER
+)
+from sensor import (
+    LightSensor,
+    LocationSensor,
+    Sensor,
+    SoilMoistureSensor,
+    TemperatureSensor,
+)
 
 
 class WifiManager:
@@ -43,8 +57,7 @@ class WifiManager:
 
 
 class MQTTManager:
-    SERVER = "iot.cpe.ku.ac.th"
-    DEBUG_TOPIC = "b6610545499/placeholder/debug"
+    SERVER = MQTT_SERVER
 
     def __init__(self):
         self.__client = MQTTClient(
@@ -73,13 +86,17 @@ class MQTTManager:
     def set_callback(self, func) -> None:
         self.__client.set_callback(func)
 
-
     def isconnected(self) -> bool:
         try:
             self.__client.ping()
             return True
         except Exception:
             return False
+
+    async def check_msg(self):
+        while True:
+            self.__client.check_msg()
+            await asyncio.sleep_ms(0)
 
 
 class ConnectionController:
@@ -92,8 +109,8 @@ class ConnectionController:
     async def initialise_connection(self) -> None:
         await self.connect()
         asyncio.create_task(self.check_connection())
-        # asyncio.create_task(self.mqtt.check_msg())
-        self.mqtt.publish(self.mqtt.DEBUG_TOPIC, "KidBright restarted")
+        asyncio.create_task(self.mqtt.check_msg())
+        self.mqtt.publish(MQTT_DEBUG_CHANNEL, "KidBright restarted")
 
     async def connect(self) -> None:
         await self.wifi.connect()
@@ -114,13 +131,16 @@ class ConnectionController:
 
 
 class Publisher:
-    PUBLISH_INTERVAL = 600
-    def __init__(self, *sensors, conn_mgr: ConnectionController):
+    SENSOR_PUBLISH_INTERVAL = 600
+
+    def __init__(self, *sensors: Sensor, conn_mgr: ConnectionController):
         self.conn_mgr = conn_mgr
         self.sensors = list(sensors)
+        self.__switch =  machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_UP)
 
     def run(self) -> None:
         asyncio.create_task(self.__publish_sensor_data_every_interval())
+        asyncio.create_task(self.__notify_watering())
 
     def __get_all_sensor_data(self) -> dict:
         temp = dict()
@@ -134,14 +154,30 @@ class Publisher:
                 data = self.__get_all_sensor_data()
                 print(data)
 
-                self.conn_mgr.mqtt.publish(MQTT_PUBLISH_CHANNEL, json.dumps(data))
-            await asyncio.sleep(self.PUBLISH_INTERVAL)
+                self.conn_mgr.mqtt.publish(SENSOR_MQTT_TOPIC, json.dumps(data))
+            await asyncio.sleep(self.SENSOR_PUBLISH_INTERVAL)
+
+    async def __notify_watering(self, mqtt):
+        while True:
+            while self.__switch.value() == 1:
+                await asyncio.sleep(0)
+            data = {"watered": 1}
+            mqtt.publish(WATER_MQTT_TOPIC, data)
+            while self.__switch.value() == 0:
+                await asyncio.sleep(0)
+            await asyncio.sleep_ms(10)
 
 
 async def main():
     conn_mgr = ConnectionController()
     await conn_mgr.initialise_connection()
-    p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor(), conn_mgr=conn_mgr)
+    p = Publisher(
+        LightSensor(),
+        TemperatureSensor(),
+        LocationSensor,
+        SoilMoistureSensor(),
+        conn_mgr=conn_mgr,
+    )
     p.run()
     while True:
         await asyncio.sleep(1)
@@ -149,5 +185,6 @@ async def main():
 
 try:
     asyncio.run(main())
-except Exception:
+except Exception as e:
+    print(e)
     machine.reset()
