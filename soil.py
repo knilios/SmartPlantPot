@@ -1,18 +1,19 @@
 import asyncio
 import json
+
 import machine
 import network
 from umqtt.robust import MQTTClient
 
 from config import (
-    MQTT_DEBUG_CHANNEL,
+    MQTT_BROKER,
+    MQTT_DEBUG_TOPIC,
     MQTT_PASS,
+    MQTT_SENSOR_TOPIC,
     MQTT_USER,
-    SENSOR_MQTT_TOPIC,
-    WATER_MQTT_TOPIC,
+    MQTT_WATER_TOPIC,
     WIFI_PASS,
     WIFI_SSID,
-    MQTT_SERVER
 )
 from sensor import (
     LightSensor,
@@ -57,11 +58,9 @@ class WifiManager:
 
 
 class MQTTManager:
-    SERVER = MQTT_SERVER
-
     def __init__(self):
         self.__client = MQTTClient(
-            client_id="", server=self.SERVER, user=MQTT_USER, password=MQTT_PASS
+            client_id="", server=MQTT_BROKER, user=MQTT_USER, password=MQTT_PASS
         )
         self.__led = machine.Pin(12, machine.Pin.OUT)
         self.__led.value(1)
@@ -71,7 +70,7 @@ class MQTTManager:
         print("*** Connecting to MQTT broker...")
         try:
             self.__client.connect()
-            self.__client.publish(MQTT_DEBUG_CHANNEL, "MQTT Reconnected")
+            self.__client.publish(MQTT_DEBUG_TOPIC, "MQTT Reconnected")
             print("*** MQTT broker connected")
             self.__led.value(0)
         except OSError as e:
@@ -110,11 +109,12 @@ class ConnectionController:
         await self.connect()
         asyncio.create_task(self.check_connection())
         asyncio.create_task(self.mqtt.check_msg())
-        self.mqtt.publish(MQTT_DEBUG_CHANNEL, "KidBright restarted")
+        self.mqtt.publish(MQTT_DEBUG_TOPIC, "KidBright restarted")
 
     async def connect(self) -> None:
         await self.wifi.connect()
         if self.wifi.isconnected():
+            await asyncio.sleep(1)
             self.mqtt.connect()
 
     async def check_connection(self) -> None:
@@ -131,12 +131,13 @@ class ConnectionController:
 
 
 class Publisher:
-    SENSOR_PUBLISH_INTERVAL = 600
+    PUBLISH_INTERVAL = 600
 
     def __init__(self, *sensors: Sensor, conn_mgr: ConnectionController):
         self.conn_mgr = conn_mgr
         self.sensors = list(sensors)
-        self.__switch =  machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_UP)
+        # this is s1 btw
+        self.__switch = machine.Pin(16, machine.Pin.IN, machine.Pin.PULL_UP)
 
     def run(self) -> None:
         asyncio.create_task(self.__publish_sensor_data_every_interval())
@@ -154,15 +155,15 @@ class Publisher:
                 data = self.__get_all_sensor_data()
                 print(data)
 
-                self.conn_mgr.mqtt.publish(SENSOR_MQTT_TOPIC, json.dumps(data))
-            await asyncio.sleep(self.SENSOR_PUBLISH_INTERVAL)
+                self.conn_mgr.mqtt.publish(MQTT_SENSOR_TOPIC, json.dumps(data))
+            await asyncio.sleep(self.PUBLISH_INTERVAL)
 
-    async def __notify_watering(self, mqtt):
+    async def __notify_watering(self):
         while True:
             while self.__switch.value() == 1:
                 await asyncio.sleep(0)
             data = {"watered": 1}
-            mqtt.publish(WATER_MQTT_TOPIC, data)
+            self.conn_mgr.mqtt.publish(MQTT_WATER_TOPIC, json.dumps(data))
             while self.__switch.value() == 0:
                 await asyncio.sleep(0)
             await asyncio.sleep_ms(10)
