@@ -17,7 +17,6 @@ from config import (
 )
 from sensor import (
     LightSensor,
-    LocationSensor,
     Sensor,
     SoilMoistureSensor,
     TemperatureSensor,
@@ -175,7 +174,6 @@ async def main():
     p = Publisher(
         LightSensor(),
         TemperatureSensor(),
-        LocationSensor,
         SoilMoistureSensor(),
         conn_mgr=conn_mgr,
     )
