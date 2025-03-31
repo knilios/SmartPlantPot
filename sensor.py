@@ -33,14 +33,9 @@ class SoilMoistureSensor(Sensor):
     def __init__(self):
         self.__PIN_NUMBER = 34
         self.__sensor = machine.ADC(self.__PIN_NUMBER)
-        self.__MAX_VALUE = 65535
 
     def get_data(self) -> dict:
-        return {
-            "moisture": abs(self.__sensor.read_u16() - self.__MAX_VALUE)
-            / self.__MAX_VALUE
-            * 100
-        }
+        return {"moisture": 4095 - self.__sensor.read()}
 
 
 class LocationSensor:
