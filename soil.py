@@ -6,7 +6,7 @@ import machine
 import network
 
 import time
-from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor, LocationSensor
+from sensor import Sensor, LightSensor, TemperatureSensor, SoilMoistureSensor, LocationSensor, HumiditySensor
 
 
 class WifiManager:
@@ -44,7 +44,7 @@ class WifiManager:
 
 class MQTTManager:
     SERVER = "iot.cpe.ku.ac.th"
-    DEBUG_TOPIC = "b6610545499/placeholder/debug"
+    DEBUG_TOPIC = "b6610545171/placeholder/debug"
 
     def __init__(self):
         self.__client = MQTTClient(
@@ -141,7 +141,7 @@ class Publisher:
 async def main():
     conn_mgr = ConnectionController()
     await conn_mgr.initialise_connection()
-    p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor(), conn_mgr=conn_mgr)
+    p = Publisher(LightSensor(), TemperatureSensor(), LocationSensor, SoilMoistureSensor(), HumiditySensor(), conn_mgr=conn_mgr)
     p.run()
     while True:
         await asyncio.sleep(1)

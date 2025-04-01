@@ -34,24 +34,29 @@ class TemperatureSensor(Sensor):
 
 class SoilMoistureSensor(Sensor):
     def __init__(self):
-        self.__PIN_NUMBER = 34
+        self.__PIN_NUMBER = 35
         self.__sensor = ADC(self.__PIN_NUMBER)
+        self.__sensor.atten(ADC.ATTN_11DB)  # Full range: 0 to 3.3V
+        self.__sensor.width(ADC.WIDTH_12BIT)  # 12-bit resolution (0-4095)
         self.__MAX_VALUE = 4095
     
     def get_data(self) -> dict:
         print(self.__sensor.read_uv())
-        return {"moisture": abs(self.__sensor.read_uv()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+        return {"moisture": self.__sensor.read()}
+        # return {"moisture": abs(self.__sensor.read_uv()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
     
 
 class HumiditySensor(Sensor):
     def __init__(self):
-        self.__PIN_NUMBER = 32
-        self.__sensor = dht.DHT11(machine.Pin(32))
+        self.__PIN_NUMBER = 33
+        self.__sensor = dht.DHT11(machine.Pin(self.__PIN_NUMBER))
     
     def get_data(self) -> dict:
+        self.__sensor.measure()
         try:
+            print(self.__sensor.temperature())
             return {"humidity": self.__sensor.humidity()}
-        except OSError as e:
+        except Exception as e:
             return {"humidity": None}
     
 
@@ -59,8 +64,4 @@ class LocationSensor():
     @staticmethod
     def get_data():
         return {"lat": 13.45, "lon": 100.29}
-        
-s = SoilMoistureSensor()
-while True:
-    print(s.get_data())
-    sleep(5)
+
