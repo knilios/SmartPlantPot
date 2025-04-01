@@ -1,5 +1,8 @@
 from machine import ADC
 import machine
+from time import sleep
+import dht
+
 
 class Sensor():    
     def get_data(self) -> dict:
@@ -33,10 +36,23 @@ class SoilMoistureSensor(Sensor):
     def __init__(self):
         self.__PIN_NUMBER = 34
         self.__sensor = ADC(self.__PIN_NUMBER)
-        self.__MAX_VALUE = 4096
+        self.__MAX_VALUE = 4095
     
     def get_data(self) -> dict:
-        return {"moisture": abs(self.__sensor.read()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+        print(self.__sensor.read_uv())
+        return {"moisture": abs(self.__sensor.read_uv()-self.__MAX_VALUE)/self.__MAX_VALUE*100}
+    
+
+class HumiditySensor(Sensor):
+    def __init__(self):
+        self.__PIN_NUMBER = 32
+        self.__sensor = dht.DHT11(machine.Pin(32))
+    
+    def get_data(self) -> dict:
+        try:
+            return {"humidity": self.__sensor.humidity()}
+        except OSError as e:
+            return {"humidity": None}
     
 
 class LocationSensor():
@@ -44,4 +60,7 @@ class LocationSensor():
     def get_data():
         return {"lat": 13.45, "lon": 100.29}
         
-
+s = SoilMoistureSensor()
+while True:
+    print(s.get_data())
+    sleep(5)
