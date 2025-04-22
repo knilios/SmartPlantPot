@@ -3,8 +3,6 @@ import json
 
 import machine
 import network
-from umqtt.robust import MQTTClient
-
 from config import (
     MQTT_BROKER,
     MQTT_DEBUG_TOPIC,
@@ -15,6 +13,8 @@ from config import (
     WIFI_PASS,
     WIFI_SSID,
 )
+from umqtt.robust import MQTTClient
+
 from sensor import (
     LightSensor,
     Sensor,
