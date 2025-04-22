@@ -1,0 +1,456 @@
+[
+    {
+        "id": "07eb6fddbf52cffb",
+        "type": "tab",
+        "label": "Flow 3",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "acfa1473ee471eb0",
+        "type": "mqtt in",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "topic": "b6610545499/plant_sensor/in",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "5732df9931633fe5",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 160,
+        "wires": [
+            [
+                "0567b89e15fe2f52"
+            ]
+        ]
+    },
+    {
+        "id": "0567b89e15fe2f52",
+        "type": "template",
+        "z": "07eb6fddbf52cffb",
+        "name": "plant_sensor_tmp",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO plant_sensor(light, temperature, soil_moisture) \nVALUES ({{payload.light}}, {{payload.temperature}}, {{payload.moisture}})",
+        "output": "str",
+        "x": 430,
+        "y": 160,
+        "wires": [
+            [
+                "c580c76e47981138",
+                "5f163f87321c51c2"
+            ]
+        ]
+    },
+    {
+        "id": "c580c76e47981138",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 13",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 620,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "5f163f87321c51c2",
+        "type": "mysql",
+        "z": "07eb6fddbf52cffb",
+        "mydb": "c23e436c1c58d92f",
+        "name": "db",
+        "x": 610,
+        "y": 160,
+        "wires": [
+            [
+                "855a932580e13265"
+            ]
+        ]
+    },
+    {
+        "id": "855a932580e13265",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 14",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "81868ec823408023",
+        "type": "mqtt in",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "topic": "b6610545499/plant_water/in",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "5732df9931633fe5",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 500,
+        "wires": [
+            [
+                "81906184ecb62356"
+            ]
+        ]
+    },
+    {
+        "id": "81906184ecb62356",
+        "type": "template",
+        "z": "07eb6fddbf52cffb",
+        "name": "plant_water_tmp",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO plant_water(watered)\nVALUES({{payload.watered}})",
+        "output": "str",
+        "x": 470,
+        "y": 500,
+        "wires": [
+            [
+                "5f163f87321c51c2"
+            ]
+        ]
+    },
+    {
+        "id": "8c1668e9b994434c",
+        "type": "inject",
+        "z": "07eb6fddbf52cffb",
+        "name": "Weather every 15 minutes",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "900",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 200,
+        "y": 620,
+        "wires": [
+            [
+                "37dc1c7344c170db"
+            ]
+        ]
+    },
+    {
+        "id": "37dc1c7344c170db",
+        "type": "http request",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=13.87&longitude=100.65&current=precipitation,relative_humidity_2m,temperature_2m,cloud_cover&timezone=Asia%2FBangkok",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 470,
+        "y": 840,
+        "wires": [
+            [
+                "a101d8d54d1858b9"
+            ]
+        ]
+    },
+    {
+        "id": "a101d8d54d1858b9",
+        "type": "template",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO `open-meteo` (\n    ts, humidity, temperature,\n    precipitation, cloud_cover\n)\nVALUES(\n    STR_TO_DATE(\"{{payload.current.time}}\", '%Y-%m-%dT%H:%i'),\n    {{payload.current.relative_humidity_2m}},\n    {{payload.current.temperature_2m}},\n    {{payload.current.precipitation}},\n    {{payload.current.cloud_cover}}\n);",
+        "output": "str",
+        "x": 680,
+        "y": 820,
+        "wires": [
+            [
+                "6ad11ff3a9fd2f63",
+                "497569e1ec80a798"
+            ]
+        ]
+    },
+    {
+        "id": "6ad11ff3a9fd2f63",
+        "type": "mysql",
+        "z": "07eb6fddbf52cffb",
+        "mydb": "c23e436c1c58d92f",
+        "name": "db",
+        "x": 850,
+        "y": 760,
+        "wires": [
+            [
+                "5345455f78997272"
+            ]
+        ]
+    },
+    {
+        "id": "5345455f78997272",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 17",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 950,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "497569e1ec80a798",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 19",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "5f04d1f59bb560aa",
+        "type": "http request",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.tmd.go.th/api/Weather3Hours/V2/?uid=api&ukey=api12345&format=json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 330,
+        "y": 320,
+        "wires": [
+            [
+                "f8727b8237be66af"
+            ]
+        ]
+    },
+    {
+        "id": "3983e383380eda6c",
+        "type": "inject",
+        "z": "07eb6fddbf52cffb",
+        "name": "Weather every 3 hrs",
+        "props": [
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "10800",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 160,
+        "y": 260,
+        "wires": [
+            [
+                "5f04d1f59bb560aa"
+            ]
+        ]
+    },
+    {
+        "id": "f8727b8237be66af",
+        "type": "change",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.Stations.Station",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 440,
+        "y": 420,
+        "wires": [
+            [
+                "4c33e1d158349bc3"
+            ]
+        ]
+    },
+    {
+        "id": "4c33e1d158349bc3",
+        "type": "function",
+        "z": "07eb6fddbf52cffb",
+        "name": "function 3",
+        "func": "function convertToSQLDatetime(tmd_time_format) {\n    const [date, time] = tmd_time_format.split(\" \");\n    const [month, day, year] = date.split(\"/\");\n\n    return `${year}-${month}-${day} ${time}`;\n}\n\nlet data = {};\ndata.payload = {}\nfor(let station of msg.payload) {\n    if (station.StationNameThai === \"สนามบินดอนเมือง\") {\n        data.payload.ts = convertToSQLDatetime(station.Observation.DateTime);\n        data.payload.station_name = station.StationNameThai;\n        data.payload.temperature = Number(station.Observation.AirTemperature);\n        data.payload.humidity = Number(station.Observation.RelativeHumidity);\n        data.payload.wind_speed = Number(station.Observation.WindSpeed);\n        data.payload.vapor_pressure = Number(station.Observation.VaporPressure);\n        data.payload.rainfall = Number(station.Observation.Rainfall);\n    };\n}\n\nreturn data;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 380,
+        "wires": [
+            [
+                "b2accf40d11064c4"
+            ]
+        ]
+    },
+    {
+        "id": "b2accf40d11064c4",
+        "type": "template",
+        "z": "07eb6fddbf52cffb",
+        "name": "",
+        "field": "topic",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "INSERT INTO tmd_plant_project (\n    ts, station_name, temperature,\n    humidity, wind_speed,\n    vapor_pressure, rainfall\n)\nVALUES(\"{{payload.ts}}\",\n    \"{{payload.station_name}}\",\n    {{payload.temperature}},\n    {{payload.humidity}},\n    {{payload.wind_speed}},\n    {{payload.vapor_pressure}},\n    {{payload.rainfall}}\n);",
+        "output": "str",
+        "x": 810,
+        "y": 440,
+        "wires": [
+            [
+                "f26798ad15d3b49a",
+                "30d97af598b43bfd"
+            ]
+        ]
+    },
+    {
+        "id": "f26798ad15d3b49a",
+        "type": "mysql",
+        "z": "07eb6fddbf52cffb",
+        "mydb": "c23e436c1c58d92f",
+        "name": "",
+        "x": 1000,
+        "y": 440,
+        "wires": [
+            [
+                "c8d774091b7d12b4"
+            ]
+        ]
+    },
+    {
+        "id": "30d97af598b43bfd",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 16",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "c8d774091b7d12b4",
+        "type": "debug",
+        "z": "07eb6fddbf52cffb",
+        "name": "debug 15",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1030,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "5732df9931633fe5",
+        "type": "mqtt-broker",
+        "name": "CPE Broker",
+        "broker": "iot.cpe.ku.ac.th",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "c23e436c1c58d92f",
+        "type": "MySQLdatabase",
+        "name": "",
+        "host": "iot.cpe.ku.ac.th",
+        "port": "3306",
+        "db": "b6610545499",
+        "tz": "+07:00",
+        "charset": "UTF8"
+    }
+]
